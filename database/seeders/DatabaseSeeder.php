@@ -16,8 +16,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
 
-    \App\Models\tutor::create(['nombre' => 'Mtro. Carlos Francisco Dominguez Dominguez']);
-    \App\Models\tutor::create(['nombre' => 'Mtra. Eloisa Ruiz Jimenez']);
+    \App\Models\Tutor::create(['nombre' => 'Mtro. Carlos Francisco Dominguez Dominguez']);
+    \App\Models\Tutor::create(['nombre' => 'Mtra. Eloisa Ruiz Jimenez']);
         // User::factory(10)->create();
 
         User::factory()->create([
