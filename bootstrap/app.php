@@ -12,6 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         // Esto desactiva el check de seguridad para el Login y Registro
+        $middleware->trustProxies(at: '*');
         $middleware->validateCsrfTokens(except: [
             '*' 
         ]);
