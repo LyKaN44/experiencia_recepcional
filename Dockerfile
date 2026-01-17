@@ -26,7 +26,10 @@ RUN composer install --no-dev --optimize-autoloader
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
+# ... (todo lo anterior se queda igual)
+
+# Exponer el puerto 80
 EXPOSE 80
 
-# Al arrancar: Limpia caché, corre migraciones y prende Apache
-CMD php artisan config:clear && php artisan migrate --force && apache2-foreground
+# Esta es la línea que debes modificar:
+CMD php artisan config:clear && php artisan migrate --force && php artisan db:seed --force && apache2-foreground
