@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
         'name' => 'RafaelLara',
         'email' => 'lykancorp@gmail.com',
         'password' => bcrypt('kodalara99'),
+        'role' => 'admin',
     ]);
     }
 }

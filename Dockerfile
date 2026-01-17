@@ -34,5 +34,4 @@ RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 EXPOSE 80
 
 # Esta es la línea que debes modificar:
-
 CMD php artisan config:clear && php artisan migrate:fresh --seed --force && apache2-foreground
