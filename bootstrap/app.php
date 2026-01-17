@@ -11,14 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Esto desactiva el check de seguridad para el Login y Registro
         $middleware->validateCsrfTokens(except: [
-            '/login',
-            '/register',
-            '/logout',
-            'login',
-            'register'
+            '*' 
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
+    ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
