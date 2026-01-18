@@ -19,11 +19,9 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
-    {
-        // Esto fuerza a que todos los links usen HTTPS en Render (producción)
-        if (config('app.env') === 'production') {
-            URL::forceScheme('https');
-        }
+    public function boot(): void {
+    if (config('app.env') === 'production') {
+        \Illuminate\Support\Facades\URL::forceScheme('https');
     }
+}
 }
