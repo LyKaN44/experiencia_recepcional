@@ -43,11 +43,13 @@ public function registro(Request $request) {
     ]);
 
     
-    User::create([
+    // Asegúrate de que el User::create incluya solo lo que mandas del formulario
+User::create([
     'name' => $request->name,
     'matricula' => $request->matricula,
-    'carrera' => $request->carrera, // <-- Nueva línea
+    'carrera' => $request->carrera,
     'password' => Hash::make($request->password),
+    'role' => 'estudiante', // Valor por defecto
 ]);
 
     return redirect('/')->with('success', 'Usuario registrado. Ya puedes iniciar sesión.');
