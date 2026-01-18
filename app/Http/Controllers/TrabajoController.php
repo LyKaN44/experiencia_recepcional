@@ -31,8 +31,8 @@ class TrabajoController extends Controller
             $file = $request->file('documento');
             $nombreArchivo = time() . '_' . $file->getClientOriginalName();
            
-            $path = $file->move(public_path('documentos'), $nombreArchivo);
-            $rutaRelativa = 'documentos/' . $nombreArchivo;
+          $path = $request->file('documento')->store('documentos', 'public');
+$rutaRelativa = 'storage/' . $path;
 
             Documento::create([
                 'user_id' => $user->getAttributes()['id'], 

@@ -34,4 +34,7 @@ RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 EXPOSE 80
 
 # Esta es la línea que debes modificar:
+
+    RUN php artisan storage:link
+    
 CMD php artisan config:clear && php artisan cache:clear && php artisan view:clear && php artisan route:clear && php artisan migrate --force && apache2-foreground
