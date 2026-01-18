@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+// IMPORTANTE: Asegúrate de que esta línea de abajo esté presente
 use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
@@ -20,10 +21,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-       {
-    if (config('app.env') === 'production') {
-        URL::forceScheme('https');
+        // Esto fuerza a que todos los links usen HTTPS en Render (producción)
+        if (config('app.env') === 'production') {
+            URL::forceScheme('https');
+        }
     }
-    }
-}
 }
