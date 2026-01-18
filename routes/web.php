@@ -52,10 +52,13 @@ Route::middleware(['auth'])->group(function () {
         return redirect('/registrar-trabajo')->with('success', 'Tutor asignado con éxito!');
     });
 
-    Route::get('/estatus', function () {   
-        $misDocumentos = Documento::where('user_id', Auth::id())->get();
-        return view('estatus', compact('misDocumentos'));
-    });
+   Route::get('/estatus', function () {
+    $userNumericId = auth()->user()->getAttributes()['id']; 
+    
+    $misDocumentos = \App\Models\Documento::where('user_id', $userNumericId)->get();
+    
+    return view('estatus', compact('misDocumentos'));
+})->middleware('auth');
 
     Route::delete('/borrar-documento/{id}', function ($id) {
         $doc = Documento::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
