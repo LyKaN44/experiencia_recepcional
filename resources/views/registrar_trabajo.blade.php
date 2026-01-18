@@ -8,7 +8,6 @@
     <style>
         body { background-color: #e9effb; min-height: 100vh; margin: 0; overflow-x: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
-        /* Sidebar azul a la derecha conforme a la imagen de la UV */
         .sidebar-right {
             background-color: #005bb5;
             color: white;
@@ -34,7 +33,6 @@
         .sidebar-right a:hover { background-color: rgba(255,255,255,0.2); border-radius: 5px; }
         .sidebar-active { background-color: white !important; color: #005bb5 !important; font-weight: bold; border-radius: 5px; }
 
-        /* Contenedor principal */
         .main-content { margin-right: 260px; padding: 40px; }
 
         .form-card {
@@ -50,6 +48,12 @@
         label { font-size: 0.85rem; color: #444; margin-bottom: 8px; font-weight: 500; }
         .form-control, .form-select { border-color: #dce4ec; font-size: 0.9rem; margin-bottom: 20px; border-radius: 8px; }
         .form-control:focus, .form-select:focus { border-color: #005bb5; box-shadow: 0 0 0 0.2rem rgba(0,91,181,0.1); }
+        
+        /* Estilo para la sección animada */
+        #seccionColaborador {
+            transition: all 0.3s ease-in-out;
+            border-left: 4px solid #005bb5;
+        }
     </style>
 </head>
 <body>
@@ -80,7 +84,6 @@
         <div class="container-fluid">
             <h3 class="text-center mb-5" style="color: #2c3e50;">Registrar Trabajo Recepcional</h3>
 
-            {{-- Formulario funcional conectado a tus rutas existentes --}}
             <form action="/guardar-tutor" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="row g-4">
@@ -106,7 +109,7 @@
                             </select>
 
                             <label>Tipo de inscripción</label>
-                            <select class="form-select">
+                            <select class="form-select" name="tipo_inscripcion">
                                 <option>Primera inscripción</option>
                                 <option>Segunda inscripción</option>
                             </select>
@@ -117,7 +120,7 @@
                     </div>
 
                     <div class="col-md-6">
-                        <div class="form-card">
+                        <div class="form-card shadow">
                             <h5 class="section-title">Dirección académica</h5>
 
                             <label>Nombre del director (Tutor)</label>
@@ -136,16 +139,32 @@
                             </select>
 
                             <label>Nombre del codirector</label>
-                            <input type="text" class="form-control" placeholder="Nombre del docente (Opcional)">
+                            <input type="text" name="codirector" class="form-control" placeholder="Nombre del docente (Opcional)">
 
                             <label>Cuerpo académico</label>
-                            <input type="text" class="form-control" placeholder="Nombre del cuerpo académico">
+                            <input type="text" name="cuerpo_academico" class="form-control" placeholder="Nombre del cuerpo académico">
 
-                            <div class="form-check mt-4">
-                                <input class="form-check-input" type="checkbox" id="colaborador">
-                                <label class="form-check-label" for="colaborador">
+                            <div class="form-check mt-4 mb-3">
+                                <input class="form-check-input" type="checkbox" id="checkColaborador" name="tiene_colaborador" value="1">
+                                <label class="form-check-label fw-bold" for="checkColaborador">
                                     Registrar estudiante(s) colaborador(es)
                                 </label>
+                            </div>
+
+                            <div id="seccionColaborador" style="display: none;" class="bg-light p-3 rounded shadow-sm">
+                                <p class="small text-muted mb-3">Complete los datos del compañero colaborador:</p>
+                                
+                                <label>Matrícula</label>
+                                <input type="text" name="colab_matricula" id="colab_matricula" class="form-control" placeholder="Ej: S22015741">
+
+                                <label>Nombre completo</label>
+                                <input type="text" name="colab_nombre" id="colab_nombre" class="form-control" placeholder="Nombre completo del estudiante">
+
+                                <label>Correo institucional</label>
+                                <input type="email" name="colab_email" id="colab_email" class="form-control" placeholder="ejemplo@estudiantes.uv.mx">
+
+                                <label>Teléfono</label>
+                                <input type="tel" name="colab_telefono" id="colab_telefono" class="form-control mb-0" placeholder="2281234567">
                             </div>
                         </div>
                     </div>
@@ -159,6 +178,29 @@
             </form>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkbox = document.getElementById('checkColaborador');
+            const seccion = document.getElementById('seccionColaborador');
+            const inputsColab = seccion.querySelectorAll('input');
+
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    seccion.style.display = 'block';
+                    // Obligamos a llenar los campos si la sección está visible
+                    inputsColab.forEach(input => input.required = true);
+                } else {
+                    seccion.style.display = 'none';
+                    // Quitamos la obligación y limpiamos para que no envíe basura
+                    inputsColab.forEach(input => {
+                        input.required = false;
+                        input.value = '';
+                    });
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>

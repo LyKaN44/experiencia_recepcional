@@ -96,3 +96,8 @@ Route::middleware(['auth'])->group(function () {
     });
 
 });
+
+use App\Http\Controllers\TrabajoController;
+
+// Cambia la ruta que tenías por esta:
+Route::post('/guardar-tutor', [TrabajoController::class, 'store'])->middleware('auth');
