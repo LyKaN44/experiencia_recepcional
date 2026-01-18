@@ -30,6 +30,12 @@ class User extends Authenticatable
         return $this->belongsTo(Tutor::class, 'tutor_id');
     }
 
+  
+public function getAuthIdentifierName()
+{
+    return 'matricula';
+}
+
     protected function casts(): array
     {
         return [
