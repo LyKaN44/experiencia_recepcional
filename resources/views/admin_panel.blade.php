@@ -7,8 +7,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         body { background-color: #e9effb; min-height: 100vh; margin: 0; }
-        
-        /* Sidebar azul a la derecha */
         .sidebar-right {
             background-color: #005bb5;
             color: white;
@@ -20,7 +18,6 @@
             padding: 30px 15px;
             z-index: 1000;
         }
-
         .sidebar-right a {
             color: white;
             text-decoration: none;
@@ -29,17 +26,18 @@
             font-size: 0.9rem;
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-
-        /* Contenido Principal */
         .main-content { margin-right: 260px; padding: 40px; }
-
-        /* Estilo de la Tabla y Buscador */
         .table-container { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .thead-uv { background-color: #005bb5; color: white; }
-        .btn-validar { background-color: #2c75e1; color: white; border: none; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; }
-        
+        .btn-validar { background-color: #2c75e1; color: white; border: none; font-size: 0.8rem; padding: 5px 8px; border-radius: 4px; transition: 0.3s; }
+        .btn-validar:hover { background-color: #1a5bb8; }
+        .btn-validar:disabled { background-color: #ccc; cursor: not-allowed; }
         .nav-tabs .nav-link { color: #005bb5; font-weight: 500; }
         .nav-tabs .nav-link.active { background-color: #005bb5; color: white; border-radius: 5px 5px 0 0; }
+        
+        /* Colores por estatus */
+        .fila-validada { background-color: #d4edda !important; } /* Verde suave */
+        .fila-por-validar { background-color: #fff3cd !important; } /* Amarillo suave */
     </style>
 </head>
 <body>
@@ -65,9 +63,17 @@
     <div class="main-content">
         <h2 class="text-center text-primary mb-4">Trabajos Recepcionales</h2>
 
+        {{-- Mensaje de éxito tras validar --}}
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle-fill"></i> {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
         <div class="row mb-4">
             <div class="col-md-10">
-                <input type="text" class="form-control" placeholder="Buscar por nombre del trabajo, del estudiante o del director...">
+                <input type="text" id="buscadorAdmin" class="form-control" placeholder="Buscar por nombre del trabajo o estudiante...">
             </div>
             <div class="col-md-2">
                 <button class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> Buscar</button>
@@ -93,38 +99,60 @@
                                 <th>Validado</th>
                                 <th>Nombre del Trabajo</th>
                                 <th>Modalidad</th>
-                                <th>Nombre del Estudiante</th>
-                                <th>Nombre del Director</th>
+                                <th>Estudiante Responsable</th>
+                                <th>Director / Tutor</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @forelse($documentos->where('user.carrera', $carrera) as $doc)
-                                <tr>
-                                    <td class="fw-bold {{ $doc->estatus == 'aprobado' ? 'text-success' : 'text-danger' }}">
-                                        {{ $doc->estatus == 'aprobado' ? '✓' : 'X' }}
-                                    </td>
-                                    <td>{{ $doc->titulo ?? 'Sin título' }}</td>
-                                    <td>{{ $doc->modalidad ?? 'N/A' }}</td>
-                                    <td>{{ $doc->user->name }}</td>
-                                    <td>{{ $doc->user->tutor->nombre ?? 'Sin tutor' }}</td>
-                                    <td>
-                                        <div class="d-flex flex-column gap-1">
-                                            <a href="{{ asset($doc->ruta_archivo) }}" class="btn btn-danger btn-sm p-0" target="_blank">PDF</a>
-                                            <form action="/admin/cambiar-estatus/{{ $doc->id }}" method="POST">
-                                                @csrf
-                                                <input type="hidden" name="nuevo_estatus" value="{{ $doc->estatus == 'aprobado' ? 'pendiente' : 'aprobado' }}">
-                                                <button type="submit" class="btn-validar">Validar</button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="text-muted">No hay trabajos registrados en esta carrera.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
+                       <tbody>
+    @forelse($documentos->where('licenciatura', $carrera) as $doc)
+        {{-- Forzamos el color de fondo si el estatus coincide --}}
+        <tr class="{{ trim($doc->estatus_tr) == 'REGISTRO VALIDADO' ? 'fila-validada' : '' }}">
+            
+            <td class="fw-bold">
+                {{-- Aquí es donde se ve el cambio visual --}}
+                @if(trim($doc->estatus_tr) == 'REGISTRO VALIDADO')
+                    <span class="text-success"><i class="bi bi-check-circle-fill"></i> ✓ VALIDADO</span>
+                @else
+                    <span class="text-danger"><i class="bi bi-x-circle-fill"></i> X PENDIENTE</span>
+                @endif
+            </td>
+
+            <td class="small">{{ $doc->nombre_tr }}</td>
+            <td>{{ $doc->modalidad }}</td>
+            <td>{{ $doc->estudiantes->where('rol_estudiante_tr', 'RESPONSABLE')->first()->nombre_estudiante_tr ?? 'N/A' }}</td>
+            <td>{{ $doc->directorDocente->nombre_docente ?? 'Sin director' }}</td>
+
+            <td>
+                <div class="d-flex flex-column gap-2">
+                    @if($doc->archivo_formato_tr)
+                        <a href="{{ asset('storage/' . $doc->archivo_formato_tr) }}" class="btn btn-danger btn-sm" target="_blank">
+                            <i class="bi bi-file-earmark-pdf-fill"></i> VER PDF
+                        </a>
+                        
+                        <form action="/admin/validar-trabajo/{{ $doc->id_tr }}" method="POST">
+                            @csrf
+                            {{-- Lógica del botón --}}
+                            @if(trim($doc->estatus_tr) == 'REGISTRO VALIDADO')
+                                <button type="submit" class="btn btn-secondary btn-sm w-100">
+                                    INVALIDAR
+                                </button>
+                            @else
+                                <button type="submit" class="btn-validar w-100">
+                                    VALIDAR
+                                </button>
+                            @endif
+                        </form>
+                    @else
+                        <span class="badge bg-light text-muted border">Sin archivo</span>
+                    @endif
+                </div>
+            </td>
+        </tr>
+    @empty
+        <tr><td colspan="6">No hay registros.</td></tr>
+    @endforelse
+</tbody>
                     </table>
                 </div>
             @endforeach

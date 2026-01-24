@@ -46,7 +46,7 @@
             <nav>
                 <a href="/menu">Inicio</a>
                 <a href="/registrar-trabajo">Registrar Trabajo Recepcional</a>
-                <a href="/estatus">Ver Status</a>
+                <a href="/estatus">Ver Estatus</a>
                 <form action="/logout" method="POST" class="mt-4">
                     @csrf
                     <button class="btn btn-link text-white p-0 text-decoration-none">Cerrar Sesión</button>

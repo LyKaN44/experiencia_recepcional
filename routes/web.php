@@ -2,102 +2,106 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
-use Illuminate\Support\Facades\File;
-use Illuminate\Http\Request;
-use App\Models\Tutor;
-use App\Models\User;
-use App\Models\Documento;
+use App\Http\Controllers\TrabajoController;
+use App\Models\TrabajoRecepcional;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
-// --- RUTAS PÚBLICAS (LOGIN Y REGISTRO) ---
+// --- RUTAS PÚBLICAS (Sin Login) ---
 Route::get('/', function () {
-    return view('login');
+    return view('login'); 
 })->name('login');
 
 Route::post('/login', [AuthController::class, 'login']);
+
 Route::get('/registro', [AuthController::class, 'showRegistro']);
 Route::post('/registro', [AuthController::class, 'registro']);
-Route::post('/logout', [AuthController::class, 'logout']);
+Route::post('/procesar-registro', [AuthController::class, 'registro']);
 
-// --- RUTAS PROTEGIDAS (AUTH) ---
+// --- RUTAS PROTEGIDAS (Solo usuarios logueados) ---
 Route::middleware(['auth'])->group(function () {
 
-    // Redirección inteligente al entrar a /menu
+    // Cerrar sesión
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Menú principal con redirección por rol
     Route::get('/menu', function () {
-        if (Auth::user()->role === 'admin') {
+        if (Auth::user()->rol === 'ADMINISTRADOR') {
             return redirect('/admin/panel');
         }
-        return view('menu'); // Esta es la vista de los ICONOS
+        return view('menu');
     });
 
-    // NUEVA SECCIÓN: Registrar Trabajo (Agrupa Tutor y Carga de PDF)
-    Route::get('/registrar-trabajo', function () {
-        $tutores = Tutor::all();
-        return view('registrar_trabajo', compact('tutores'));
-    });
+    // --- Módulo de Estudiante ---
+    Route::get('/registrar-trabajo', [TrabajoController::class, 'create']);
+    Route::post('/guardar-trabajo', [TrabajoController::class, 'store']);
+    Route::get('/descargar-comprobante', [TrabajoController::class, 'descargarPDF'])->name('descargar.pdf');
 
-    // Acciones de Alumno
-    Route::post('/subir-archivo', [AuthController::class, 'upload']);
-    Route::post('/guardar-tutor', function (Request $request) {
+    Route::get('/estatus', function () {
         $user = Auth::user();
-        $tutorId = $request->tutor_id;
-        $alumnosInscritos = User::where('tutor_id', $tutorId)->count();
+        $miTrabajo = DB::table('estudiante_tr')
+            ->join('trabajo_recepcional', 'estudiante_tr.id_tr_registrado', '=', 'trabajo_recepcional.id_tr')
+            ->join('docente', 'trabajo_recepcional.director_tr', '=', 'docente.id_docente')
+            ->where('estudiante_tr.matricula_estudiante_tr', $user->matricula_usuario)
+            ->select('trabajo_recepcional.*', 'docente.nombre_docente') 
+            ->first();
 
-        if ($alumnosInscritos >= 3) {
-            return back()->with('error', 'Lo sentimos, este catedrático ya no tiene cupo disponible.');
-        }
-
-        $user->tutor_id = $tutorId;
-        $user->save();
-        return redirect('/registrar-trabajo')->with('success', 'Tutor asignado con éxito!');
+        return view('estatus', compact('miTrabajo'));
     });
 
-   Route::get('/estatus', function () {
-    $userNumericId = auth()->user()->getAttributes()['id']; 
-    
-    $misDocumentos = \App\Models\Documento::where('user_id', $userNumericId)->get();
-    
-    return view('estatus', compact('misDocumentos'));
-})->middleware('auth');
-
-    Route::delete('/borrar-documento/{id}', function ($id) {
-        $doc = Documento::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
-        if (File::exists(public_path($doc->ruta_archivo))) {
-            File::delete(public_path($doc->ruta_archivo));
-        }
-        $doc->delete();
-        return back()->with('success', 'Documento eliminado');
-    });
-
-    // --- RUTAS DE ADMINISTRADOR ---
+    // --- Módulo de Administración ---
     Route::get('/admin/panel', function () {
-        if (Auth::user()->role !== 'admin') {
+        if (Auth::user()->rol !== 'ADMINISTRADOR') {
             return redirect('/menu');
         }
 
         $carrerasFijas = [
-            'Administracion',
-            'Contaduria',
-            'Gestion y Direccion de Negocios',
-            'Sistemas Computacionales Administrativos'
+            'ADMINISTRACION', 
+            'CONTADURIA', 
+            'GESTION Y DIRECCION DE NEGOCIOS',
+            'SISTEMAS COMPUTACIONALES ADMINISTRATIVOS'
         ];
 
-        // Cargamos documentos con usuario y tutor para evitar errores en la vista
-        $documentos = Documento::with(['user.tutor'])->get();
+        // Eager Loading para evitar el error de "countable" y optimizar la carga
+        $documentos = TrabajoRecepcional::with(['estudiantes', 'directorDocente'])->get();
 
-        return view('admin_panel', compact('documentos', 'carrerasFijas'));
+        return view('admin_panel', compact('carrerasFijas', 'documentos'));
     });
 
-    Route::post('/admin/cambiar-estatus/{id}', function (Request $request, $id) {
-        $doc = Documento::findOrFail($id);
-        $doc->estatus = $request->nuevo_estatus;
-        $doc->save();
-        return back()->with('success', 'Estatus actualizado');
+    // Buscador de estudiantes (para colaboradores o registro)
+    Route::get('/buscar-estudiante/{matricula}', function ($matricula) {
+        $estudiante = DB::table('estudiante_inscrito')
+                        ->where('matricula_estudiante_inscrito', $matricula)
+                        ->first();
+
+        if (!$estudiante) {
+            return response()->json([
+                'success' => false, 
+                'message' => "La Coordinación no tiene registro de esta matrícula."
+            ]);
+        }
+
+        $yaRegistrado = DB::table('usuario')
+            ->where('matricula_usuario', $matricula)
+            ->where('id_periodo_usuario', $estudiante->id_periodo_estudiante_inscrito)
+            ->first();
+
+        if ($yaRegistrado) {
+            return response()->json([
+                'success' => false, 
+                'message' => "Ya se encuentra registrado. Por favor inicia sesión o contacta a la Coordinación."
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'nombre'  => $estudiante->nombre_estudiante_inscrito,
+            'correo'  => $estudiante->correo_uv_estudiante_inscrito,
+            'licenciatura_estudiante_inscrito' => $estudiante->licenciatura_estudiante_inscrito
+        ]);
     });
 
-});
+    Route::post('/subir-formato-tr', [TrabajoController::class, 'subirFormatoRuta']);
 
-use App\Http\Controllers\TrabajoController;
-
-// Cambia la ruta que tenías por esta:
-Route::post('/guardar-tutor', [TrabajoController::class, 'store'])->middleware('auth');
+    Route::post('/admin/validar-trabajo/{id}', [TrabajoController::class, 'validarTrabajo'])->name('admin.validar');
+}); 

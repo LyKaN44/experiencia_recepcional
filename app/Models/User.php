@@ -2,45 +2,36 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    protected $table = 'usuario';
+    protected $primaryKey = 'id_usuario';
+    public $timestamps = false;
 
     protected $fillable = [
-        'name',
-        'matricula',
-        'carrera',
-        'password',
-        'role',     
-        'tutor_id', 
+        'matricula_usuario', 'nombre_usuario', 'correo_uv_usuario', 
+        'password', 'rol', 'licenciatura', 'fecha_registro', 'id_periodo_usuario'
     ];
 
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden = ['password'];
 
-    
-    public function tutor()
-    {
-        return $this->belongsTo(Tutor::class, 'tutor_id');
+    public function getAuthIdentifierName() {
+        return 'matricula_usuario';
     }
 
-  
-public function getAuthIdentifierName()
-{
-    return 'matricula';
-}
+    
 
-    protected function casts(): array
+    // Esto hace que {{ Auth::user()->name }} devuelva el nombre de la tabla
+    public function getNameAttribute()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->nombre_usuario;
+    }
+
+    // Esto te permite usar {{ Auth::user()->carrera }} en las vistas
+    public function getCarreraAttribute()
+    {
+        return $this->licenciatura;
     }
 }

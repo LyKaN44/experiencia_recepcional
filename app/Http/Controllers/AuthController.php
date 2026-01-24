@@ -1,86 +1,84 @@
 <?php
+
 namespace App\Http\Controllers;
-use App\Models\User;
+
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use App\Models\Documento;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB; 
 
-class AuthController extends Controller {
-    public function login(Request $request) {
-    $credentials = $request->only('matricula', 'password');
-
-    if (Auth::attempt($credentials)) {
-        $request->session()->regenerate();
-
-        if (Auth::user()->role === 'admin') {
-            return redirect()->intended('/admin/panel'); 
-        }
-
-        return redirect()->intended('/menu'); 
+class AuthController extends Controller
+{
+    
+    public function showRegistro()
+    {
+        return view('registro');
     }
 
-    return back()->withErrors(['error' => 'Matrícula o contraseña incorrectos']);
-}
-
-    public function logout(Request $request) {
-    Auth::logout();
-    $request->session()->invalidate();
-    $request->session()->regenerateToken();
-    return redirect('/');
-}
-
-public function showRegistro() {
-    return view('registro');
-}
-
-public function registro(Request $request) {
-   
+   public function registro(Request $request)
+{
+    //validacion de contraseñas
     $request->validate([
-        'name' => 'required|string|max:255',
-        'matricula' => 'required|string|unique:users',
-        'password' => 'required|string|min:3',
+        'nombre'    => 'required|string|max:100',
+        'matricula' => 'required|string|max:9|unique:usuario,matricula_usuario',
+        'correo'    => 'required|email|unique:usuario,correo_uv_usuario',
+        
+        'password'  => 'required|min:8|confirmed', 
+    ], [
+        
+        'password.confirmed' => 'Las contraseñas no coinciden, verifícalas.',
+        'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+        'matricula.unique' => 'Esta matrícula ya tiene una cuenta activa.',
     ]);
 
     
-    // Asegúrate de que el User::create incluya solo lo que mandas del formulario
-User::create([
-    'name' => $request->name,
-    'matricula' => $request->matricula,
-    'carrera' => $request->carrera,
-    'password' => Hash::make($request->password),
-    'role' => 'estudiante', // Valor por defecto
-]);
+    $estudianteInscrito = DB::table('estudiante_inscrito')
+                          ->where('matricula_estudiante_inscrito', $request->matricula)
+                          ->first();
 
-    return redirect('/')->with('success', 'Usuario registrado. Ya puedes iniciar sesión.');
-}
-
-
-public function upload(Request $request) {
-        $request->validate([
-            'documento' => 'required|mimes:pdf|max:5120',
-        ]);
-
-        if ($request->hasFile('documento')) {
-            $archivo = $request->file('documento');
-            
-            
-            $matricula = Auth::user()->matricula;
-            $nombreArchivo = $matricula . '_' . time() . '.pdf';
-            
-           
-            $archivo->move(public_path('documentos'), $nombreArchivo);
-
-            
-            Documento::create([
-                'user_id' => Auth::id(),
-                'nombre_original' => $archivo->getClientOriginalName(),
-                'ruta_archivo' => 'documentos/' . $nombreArchivo,
-            ]);
-
-            return back()->with('success', '¡Tesis guardada en servidor y base de datos!');
-        }
+    if (!$estudianteInscrito) {
+        return back()->withErrors([
+            'matricula' => 'No se puede registrar porque no se encontró su inscripción vigente.'
+        ])->withInput();
     }
 
+    //Guardado con datos oficiales
+    \App\Models\User::create([
+        'matricula_usuario'  => $request->matricula, 
+        'nombre_usuario'     => $request->nombre,
+        'correo_uv_usuario'  => $request->correo,
+        'password'           => bcrypt($request->password),
+        'rol'                => 'ESTUDIANTE',
+        'licenciatura'       => $estudianteInscrito->licenciatura_estudiante_inscrito,
+        'fecha_registro'     => now(),
+        'id_periodo_usuario' => $estudianteInscrito->id_periodo_estudiante_inscrito 
+    ]);
 
+    return redirect('/')->with('success', 'Usuario registrado correctamente. Ya puedes iniciar sesión.');
+}
+
+    public function login(Request $request)
+    {
+        $credentials = [
+            'matricula_usuario' => $request->matricula,
+            'password'          => $request->password
+        ];
+
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
+            return redirect()->intended('/menu');
+        }
+
+        return back()->withErrors(['matricula' => 'Credenciales incorrectas']);
+    }
+
+    public function logout(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/');
+    }
 }
