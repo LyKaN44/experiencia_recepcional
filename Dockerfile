@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Instalar extensiones
+# Instalar extensiones y dependencias
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     zip \
@@ -22,19 +22,19 @@ WORKDIR /var/www/html
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 RUN composer install --no-dev --optimize-autoloader
 
-# --- PERMISOS CRÍTICOS PARA EVITAR "PÁGINA EXPIRADA" ---
+# Permisos (Aseguramos que Laravel pueda escribir sesiones y logs)
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# ... (todo lo anterior se queda igual)
+# Crear el link de storage durante la construcción
+RUN php artisan storage:link --force
 
-
-
-# Exponer el puerto 80
 EXPOSE 80
 
-# Esta es la línea que debes modificar:
-
-    RUN php artisan storage:link
-    
-CMD php artisan config:clear && php artisan cache:clear && php artisan view:clear && php artisan route:clear && php artisan migrate --force && apache2-foreground
+# El CMD definitivo: Limpia, migra y arranca
+CMD php artisan config:clear && \
+    php artisan cache:clear && \
+    php artisan view:clear && \
+    php artisan route:clear && \
+    php artisan migrate --force && \
+    apache2-foreground
