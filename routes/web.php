@@ -18,6 +18,42 @@ Route::get('/registro', [AuthController::class, 'showRegistro']);
 Route::post('/registro', [AuthController::class, 'registro']);
 Route::post('/procesar-registro', [AuthController::class, 'registro']);
 
+/** * ESTA ES LA RUTA QUE CORREGIMOS:
+ * Se movió fuera del middleware 'auth' para que el buscador funcione 
+ * en el formulario de registro aunque el usuario no esté logueado.
+ */
+Route::get('/buscar-estudiante/{matricula}', function ($matricula) {
+    $estudiante = DB::table('estudiante_inscrito')
+                    ->whereRaw('LOWER(matricula_estudiante_inscrito) = ?', [strtolower($matricula)])
+                    ->first();
+
+    if (!$estudiante) {
+        return response()->json([
+            'success' => false, 
+            'message' => "La Coordinación no tiene registro de esta matrícula."
+        ]);
+    }
+
+    $yaRegistrado = DB::table('usuario')
+        ->where('matricula_usuario', $matricula)
+        ->where('id_periodo_usuario', $estudiante->id_periodo_estudiante_inscrito)
+        ->first();
+
+    if ($yaRegistrado) {
+        return response()->json([
+            'success' => false, 
+            'message' => "Ya se encuentra registrado. Por favor inicia sesión o contacta a la Coordinación."
+        ]);
+    }
+
+    return response()->json([
+        'success' => true,
+        'nombre'  => $estudiante->nombre_estudiante_inscrito,
+        'correo'  => $estudiante->correo_uv_estudiante_inscrito,
+        'licenciatura_estudiante_inscrito' => $estudiante->licenciatura_estudiante_inscrito
+    ]);
+});
+
 // --- RUTAS PROTEGIDAS (Solo usuarios logueados) ---
 Route::middleware(['auth'])->group(function () {
 
@@ -62,46 +98,9 @@ Route::middleware(['auth'])->group(function () {
             'SISTEMAS COMPUTACIONALES ADMINISTRATIVOS'
         ];
 
-        // Eager Loading para evitar el error de "countable" y optimizar la carga
         $documentos = TrabajoRecepcional::with(['estudiantes', 'directorDocente'])->get();
 
         return view('admin_panel', compact('carrerasFijas', 'documentos'));
     });
-
-    // Buscador de estudiantes (para colaboradores o registro)
-    Route::get('/buscar-estudiante/{matricula}', function ($matricula) {
-        $estudiante = DB::table('estudiante_inscrito')
-                        ->where('matricula_estudiante_inscrito', $matricula)
-                        ->first();
-
-        if (!$estudiante) {
-            return response()->json([
-                'success' => false, 
-                'message' => "La Coordinación no tiene registro de esta matrícula."
-            ]);
-        }
-
-        $yaRegistrado = DB::table('usuario')
-            ->where('matricula_usuario', $matricula)
-            ->where('id_periodo_usuario', $estudiante->id_periodo_estudiante_inscrito)
-            ->first();
-
-        if ($yaRegistrado) {
-            return response()->json([
-                'success' => false, 
-                'message' => "Ya se encuentra registrado. Por favor inicia sesión o contacta a la Coordinación."
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'nombre'  => $estudiante->nombre_estudiante_inscrito,
-            'correo'  => $estudiante->correo_uv_estudiante_inscrito,
-            'licenciatura_estudiante_inscrito' => $estudiante->licenciatura_estudiante_inscrito
-        ]);
-    });
-
-    Route::post('/subir-formato-tr', [TrabajoController::class, 'subirFormatoRuta']);
-
-    Route::post('/admin/validar-trabajo/{id}', [TrabajoController::class, 'validarTrabajo'])->name('admin.validar');
 }); 
+
